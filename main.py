@@ -40,11 +40,10 @@ def is_nd_array(obj):
     else:
         return obj
 
-@app.route('/upload', methods=['POST'])
-def upload():
+@app.route('/upload_mapper_r', methods=['POST'])
+def upload_mapper_r():
     pandas2ri.activate()
     """Process the uploaded file and upload it to Google Cloud Storage."""
-    print(request.form)
     mapper_str: str = request.form['mapper']
     entity = request.form['entity']
 
@@ -55,7 +54,6 @@ def upload():
     mapper = robjects.r(mapper_str)
     result = mapper(int(entity))
 
-    print(result)
     # test
     # b = dict(zip(result.names, result[0]))
     # print(b)
@@ -75,7 +73,7 @@ def upload():
 
     # possibly we should also send a python function from original project
     # that will convert result data from R function
-    data = dict(zip(result.names, entity))
+    data = {result.names[0]: entity}
 
     # this is not working because result[0] is int32 type, not int which
     # makes data object (dict) not processable into json
@@ -89,30 +87,30 @@ def upload():
     return data, 200
 
 
-@app.route('/upload_reducer', methods=['POST'])
-def upload_reducer():
+@app.route('/upload_reducer_r', methods=['POST'])
+def upload_reducer_r():
     pandas2ri.activate()
     """Process the uploaded file and upload it to Google Cloud Storage."""
-    print(request.form)
-    reducer_str: str = request.form['reducer']
-    values = request.form['values']
-    
-    print(values)
-    print("HOOO")
+    form = request.get_json()
+    reducer_str: str = form['reducer']
+    values = form['values']
 
 
     if not reducer_str:
         return 'No file uploaded.', 400
 
-    reducer = robjects.r(reducer_str)
-    result = reducer(values)
+    values_r = robjects.IntVector([int(i) for i in values])
 
-    print(result)
+    reducer = robjects.r(reducer_str)
+    result = reducer(values_r)
+
+    print(result[0])
+    print("Return string value parsable to json")
    
     # data = dict(zip(result.names, entity))
 
     
-    return 200
+    return str(result[0]), 200
 
 
 @app.errorhandler(500)
